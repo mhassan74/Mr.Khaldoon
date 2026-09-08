@@ -57,17 +57,3 @@ data/
   appearing in both forms in different parts of the UI).
 - GA + Microsoft Clarity trackers present on every page — blocked in
   `fixtures/base.ts`.
-
-## Known gap to raise with the dev team
-
-Zero `data-testid` coverage across the whole app. Every locator here falls
-back to `#id`/role-based matching, which is more brittle against copy
-changes and refactors than testids would be. Worth a follow-up pass (see
-the `add-testid-existing-feature` skill) once the handover settles.
-
-## Security note
-
-An earlier screenshot shared in this project's chat history contained a
-real, plaintext `ANTHROPIC_API_KEY` from a *different* local project
-(`KhalDoonOptimized`). That key is now exposed in chat history — rotate it.
-Nothing from that key was copied into this project.
