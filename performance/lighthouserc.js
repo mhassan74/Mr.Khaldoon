@@ -26,6 +26,7 @@ module.exports = {
       url: [
         `${BASE_URL}/en/dashboard`,
         `${BASE_URL}/en/course/cmhswisll000rpj01buejz1q0`,
+        `${BASE_URL}/en/practice`,
       ],
       numberOfRuns: 3,
       puppeteerScript: './performance/login-puppeteer.js',

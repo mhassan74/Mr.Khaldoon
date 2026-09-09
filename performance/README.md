@@ -153,10 +153,11 @@ own output before trusting the result.
 
 # Track 3: Frontend Core Web Vitals (Lighthouse CI)
 
-`npm run perf` (from the repo root) runs Lighthouse CI against the
-dashboard and a course page, mobile-throttled, 3 runs each — Lighthouse
-scores are noisy, so the assertions in `lighthouserc.js` look at all 3
-runs, not a single one.
+`npm run perf` (from the repo root) runs Lighthouse CI against the URLs
+listed in `collect.url` in `lighthouserc.js` (currently the dashboard, a
+course page, and `/en/practice`), mobile-throttled, 3 runs each per URL —
+Lighthouse scores are noisy, so the assertions look at all 3 runs, not a
+single one.
 
 **Setup**: `login-puppeteer.js` logs in once per audited URL using the
 same login form as the Playwright tests (`#email`/`#password`/submit
@@ -167,31 +168,28 @@ the dashboard and `#email` never renders. The script checks `page.url()`
 after navigating and skips the form fill when that happens, instead of
 timing out waiting for a field that will never appear.
 
-**Reports**: two layers, same idea as the k6 `-latest.html` files above.
-- `<page>-report-latest.html` (e.g. `dashboard-report-latest.html`) —
-  fixed filename per URL, **overwritten every run** by
-  `generate-latest-reports.js` (chained onto `npm run perf`). This is the
-  one to open for "what does it look like right now" — always the current
-  representative (median) run per URL, tracked in git like the k6 latest
-  files.
-- `reports/lighthouse/` — every individual run's timestamped HTML/JSON,
-  gitignored (LHCI writes 6+ files per `npm run perf` invocation and never
-  prunes old ones, so this folder grows unbounded — `rm -rf
-  performance/reports/lighthouse` periodically if it gets large). This is
-  where `generate-latest-reports.js` reads `manifest.json` from to find
-  each URL's representative run.
+**Reports**: `reports/lighthouse/<slug>-report-latest.html` — one fixed
+filename per URL (e.g. `dashboard-report-latest.html`), same convention as
+the k6 `-latest.html` files above, tracked in git. `generate-latest-reports.js`
+(chained onto `npm run perf`) reads `manifest.json` to find each URL's
+representative (median) run, writes it to that fixed filename, then
+**deletes every raw timestamped `.report.html`/`.report.json` and
+`manifest.json`** — LHCI itself never prunes those and they'd otherwise
+accumulate a handful of files per URL on every single run. Nothing but the
+`-latest.html` files remains on disk between runs.
 
 Adding more URLs to `collect.url` in `lighthouserc.js`? Each gets its own
-`<slug>-report-latest.html`, derived from the URL path (e.g.
-`/en/practice` → `practice-report-latest.html`).
+`<slug>-report-latest.html` automatically, derived from the URL path (e.g.
+`/en/practice` → `practice-report-latest.html`) — no other config needed.
 
-**Results so far, confirmed against production (reproduced across three
-separate runs on 2026-09-09):**
+**Results so far, confirmed against production (reproduced across four
+separate runs on 2026-09-09, dashboard + course page every time, plus
+`/en/practice` from the run that added it):**
 - Performance score: 0.30–0.75 across runs (target was ≥0.8) — noisy, but
-  never once met the target
+  never once met the target on any of the 3 URLs
 - Largest Contentful Paint: 6.2–9.3s on mobile-simulated throttling
-  (target was ≤2.5s) — consistently ~3x over budget on both pages
-- Total Blocking Time occasionally spiked to 400–790ms against a 300ms
+  (target was ≤2.5s) — consistently ~3x over budget on every page tested
+- Total Blocking Time occasionally spiked to 300–790ms against a 300ms
   target; CLS stayed within budget every run
 
 Thresholds in `lighthouserc.js` are currently `warn`, not `error`, since

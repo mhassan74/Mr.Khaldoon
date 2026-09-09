@@ -15,9 +15,14 @@ playwright/.auth/
 # Secrets
 .env
 
-# Lighthouse CI local reports (heavy multi-file output per run — see performance/lighthouserc.js)
+# Lighthouse CI raw per-run output — cleaned up automatically after each
+# run by generate-latest-reports.js; these patterns are just a safety net
+# in case a run gets interrupted before cleanup. The *-report-latest.html
+# files it produces are NOT ignored — tracked like the k6 latest files.
 .lighthouseci/
-performance/reports/lighthouse/
+performance/reports/lighthouse/*.report.html
+performance/reports/lighthouse/*.report.json
+performance/reports/lighthouse/manifest.json
 
 # Personal Claude Code settings (not shared with the team)
 .claude/settings.local.json
