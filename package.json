@@ -11,7 +11,7 @@
     "test:chromium": "playwright test --project=chromium",
     "codegen": "playwright codegen",
     "report": "playwright show-report",
-    "perf": "lhci autorun --config=performance/lighthouserc.js"
+    "perf": "lhci autorun --config=performance/lighthouserc.js && node performance/generate-latest-reports.js"
   },
   "devDependencies": {
     "@lhci/cli": "^0.15.1",

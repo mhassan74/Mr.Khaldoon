@@ -167,18 +167,32 @@ the dashboard and `#email` never renders. The script checks `page.url()`
 after navigating and skips the form fill when that happens, instead of
 timing out waiting for a field that will never appear.
 
-**Reports**: `reports/lighthouse/` (gitignored — LHCI writes 6+ heavy
-HTML/JSON files per run, ~3-4MB total, unlike k6's single overwritten
-file above, so committing every run would bloat the repo fast). Open the
-`.report.html` files directly; share a specific one manually if a finding
-needs to be handed off.
+**Reports**: two layers, same idea as the k6 `-latest.html` files above.
+- `<page>-report-latest.html` (e.g. `dashboard-report-latest.html`) —
+  fixed filename per URL, **overwritten every run** by
+  `generate-latest-reports.js` (chained onto `npm run perf`). This is the
+  one to open for "what does it look like right now" — always the current
+  representative (median) run per URL, tracked in git like the k6 latest
+  files.
+- `reports/lighthouse/` — every individual run's timestamped HTML/JSON,
+  gitignored (LHCI writes 6+ files per `npm run perf` invocation and never
+  prunes old ones, so this folder grows unbounded — `rm -rf
+  performance/reports/lighthouse` periodically if it gets large). This is
+  where `generate-latest-reports.js` reads `manifest.json` from to find
+  each URL's representative run.
 
-**First real run (2026-09-09), confirmed against production:**
-- Performance score: 0.66–0.75 (target was ≥0.8)
-- Largest Contentful Paint: 6.9–8.5s on mobile-simulated throttling
-  (target was ≤2.5s) — well outside budget on both pages, worth raising
-  at the handover
-- CLS and Total Blocking Time were within budget
+Adding more URLs to `collect.url` in `lighthouserc.js`? Each gets its own
+`<slug>-report-latest.html`, derived from the URL path (e.g.
+`/en/practice` → `practice-report-latest.html`).
+
+**Results so far, confirmed against production (reproduced across three
+separate runs on 2026-09-09):**
+- Performance score: 0.30–0.75 across runs (target was ≥0.8) — noisy, but
+  never once met the target
+- Largest Contentful Paint: 6.2–9.3s on mobile-simulated throttling
+  (target was ≤2.5s) — consistently ~3x over budget on both pages
+- Total Blocking Time occasionally spiked to 400–790ms against a 300ms
+  target; CLS stayed within budget every run
 
 Thresholds in `lighthouserc.js` are currently `warn`, not `error`, since
 that first run is the only baseline that exists so far. Once you've run
