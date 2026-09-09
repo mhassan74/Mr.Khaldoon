@@ -27,6 +27,7 @@ module.exports = {
         `${BASE_URL}/en/dashboard`,
         `${BASE_URL}/en/course/cmhswisll000rpj01buejz1q0`,
         `${BASE_URL}/en/practice`,
+        `${BASE_URL}/en/ask`,
       ],
       numberOfRuns: 3,
       puppeteerScript: './performance/lighthouse/login-puppeteer.js',
