@@ -14,3 +14,10 @@ playwright/.auth/
 
 # Secrets
 .env
+
+# Lighthouse CI local reports (heavy multi-file output per run — see performance/lighthouserc.js)
+.lighthouseci/
+performance/reports/lighthouse/
+
+# Personal Claude Code settings (not shared with the team)
+.claude/settings.local.json

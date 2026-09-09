@@ -17,6 +17,7 @@ pages/
   StudyFlowPage.ts          Lesson -> Start -> Section -> "Start Learning" -> "Start with <tutor>"
 data/
   test-data.ts              Non-secret fixtures: real subject/lesson names
+performance/                Performance testing — k6 load tests + Lighthouse CI, see performance/README.md
 ```
 
 ## First run
@@ -57,3 +58,9 @@ data/
   appearing in both forms in different parts of the UI).
 - GA + Microsoft Clarity trackers present on every page — blocked in
   `fixtures/base.ts`.
+
+## Performance testing
+
+k6 API load tests and Lighthouse CI frontend checks live in `performance/`
+— see [performance/README.md](performance/README.md) for setup, commands,
+and results so far. Quick start: `npm run perf` runs the Lighthouse track.

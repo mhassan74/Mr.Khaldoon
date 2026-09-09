@@ -10,12 +10,15 @@
     "test:ui": "playwright test --ui",
     "test:chromium": "playwright test --project=chromium",
     "codegen": "playwright codegen",
-    "report": "playwright show-report"
+    "report": "playwright show-report",
+    "perf": "lhci autorun --config=performance/lighthouserc.js"
   },
   "devDependencies": {
+    "@lhci/cli": "^0.15.1",
     "@playwright/test": "^1.48.0",
     "@types/node": "^22.0.0",
     "dotenv": "^16.4.5",
+    "puppeteer": "^25.10.0",
     "typescript": "^5.6.0"
   }
 }

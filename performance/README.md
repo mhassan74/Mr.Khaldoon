@@ -1,0 +1,188 @@
+# Performance testing
+
+Three tracks, because this app has three fundamentally different
+performance profiles: a normal REST backend, an LLM-backed chatbot, and a
+media-heavy frontend. See the memory note `feedback-mrkhaldoon-perf-strategy`
+for why they're split instead of one generic load test plan.
+
+1. **API load (k6)** — this file, below.
+2. **AI chatbot & quiz-generation latency** — not built yet.
+3. **Frontend Core Web Vitals (Lighthouse CI)** — see the section near the
+   bottom of this file.
+
+---
+
+# Track 1: API load testing (k6)
+
+k6 load tests for Mr Khaldoon. Three scripts so far, each targeting a
+different endpoint.
+
+## Install k6
+
+Windows: `winget install --id GrafanaLabs.k6`. If just installed, open a
+**new** terminal window — an already-open one won't see it on PATH until
+you do.
+
+## Scripts
+
+| Script | Target | Session model |
+| --- | --- | --- |
+| `dashboard-load-test.js` | `GET /api/student/dashboard` | One shared login (`setup()` runs once, every VU reuses it) |
+| `classes-page-load-test.js` | `GET /en/classes` | Per-VU login, round-robin across a `TEST_ACCOUNTS` pool |
+| `dashboard-load-test-multi-user.js` | `GET /api/student/dashboard` | Per-VU login, round-robin across a `TEST_ACCOUNTS` pool |
+
+---
+
+### `dashboard-load-test.js`
+
+`GET /api/student/dashboard` — the highest-traffic authenticated
+endpoint (hit by every student on every session) and the one that
+aggregates the most data per request (stats + points breakdown), making
+it a useful single target for a first performance check.
+
+**How it works**: `setup()` logs in **once** (real NextAuth flow:
+`GET /api/auth/csrf` → `POST /api/auth/callback/credentials`) and shares
+that session across every virtual user, so the load is isolated to the
+dashboard endpoint itself rather than mixed with repeated login traffic.
+
+```bash
+k6 run performance/dashboard-load-test.js -e BASE_URL=https://staging.mrkhaldoon.com -e TEST_USER_EMAIL=student@test.com -e TEST_USER_PASSWORD=your-password -e VUS=5 -e DURATION=15s
+```
+
+### `classes-page-load-test.js`
+
+`GET /en/classes` (the "All Subjects" page), spreading load across a
+pool of test accounts so virtual users represent real, distinct sessions
+rather than one shared login replayed thousands of times. Each VU logs
+in once (round-robin-assigned from `TEST_ACCOUNTS`) and reuses that
+session for its later iterations.
+
+**First run — verify it works (small, fast, safe):**
+
+```bash
+k6 run performance/classes-page-load-test.js -e BASE_URL=https://mrkhaldoon.com -e ALLOW_PROD=true -e TEST_ACCOUNTS="nthabet.patexs@gmail.com:password123,mabdelkawi@patexs.com:password123,ssafwat@patexs.com:password123" -e VUS=3 -e DURATION=6s
+```
+
+Already confirmed passing (2026-09-09): `vus_max: 3`, ran exactly 6s,
+100% checks passed, p95 ~412ms. **Check `vus_max` and elapsed time in the
+output yourself before trusting any future run of this command** — if
+they don't match the small numbers you passed, the VUS/DURATION override
+isn't working and you're about to run the full ramp instead (see
+"Lesson learned" below).
+
+**Full ramp-up run** (0 → 100 → 300 → 600 → 1000 VUs over ~2 minutes,
+holds at 1000 for 54s, ramps down over 36s — **total ~3 minutes**):
+
+```bash
+k6 run performance/classes-page-load-test.js -e BASE_URL=https://mrkhaldoon.com -e ALLOW_PROD=true -e TEST_ACCOUNTS="nthabet.patexs@gmail.com:password123,mabdelkawi@patexs.com:password123,ssafwat@patexs.com:password123"
+```
+
+**This target is production** (`mrkhaldoon.com`) — `ALLOW_PROD=true` is
+required and real. A prior run of this exact profile measured **10.83%
+request failures and response times degrading to 9–51+ seconds** under
+1000 concurrent connections — expect similar this time, and be aware
+real users on the app may be affected during the run.
+
+**Known limitation**: 3 accounts shared round-robin across up to 1000
+VUs means each account carries roughly 333 concurrent sessions at peak —
+a real test of the endpoint's throughput, but not 1000 truly distinct
+users. For less session overlap, add more accounts to `TEST_ACCOUNTS`.
+
+### `dashboard-load-test-multi-user.js`
+
+Multi-account variant of `dashboard-load-test.js` — same target
+(`GET /api/student/dashboard`), but each VU is assigned one account from
+a `TEST_ACCOUNTS` pool (round-robin by VU id) and logs in as that account
+on its first iteration, instead of every VU sharing one login. Verified
+against the real app (2026-09-08): 6 VUs across the 3 `patexs.com`
+accounts, 100% checks passed.
+
+Unlike the other two scripts, this one reads `VUS`/`DURATION` directly
+into `options.vus`/`options.duration` rather than baking in a fixed ramp
+— there's no hardcoded stages array to accidentally bypass, so passing
+`-e VUS`/`-e DURATION` (or a `--stage` CLI flag) works exactly as
+expected without the override pattern the other two scripts need.
+
+```bash
+k6 run performance/dashboard-load-test-multi-user.js -e BASE_URL=https://mrkhaldoon.com -e ALLOW_PROD=true -e TEST_ACCOUNTS="nthabet.patexs@gmail.com:password123,mabdelkawi@patexs.com:password123,ssafwat@patexs.com:password123" -e VUS=6 -e DURATION=6s
+```
+
+For a gradual ramp instead of a flat VU count, use k6's `--stage` flag
+(overrides `options.vus`/`duration` entirely):
+
+```bash
+k6 run performance/dashboard-load-test-multi-user.js -e BASE_URL=https://mrkhaldoon.com -e ALLOW_PROD=true -e TEST_ACCOUNTS="nthabet.patexs@gmail.com:password123,mabdelkawi@patexs.com:password123,ssafwat@patexs.com:password123" --stage 30s:50,1m:150,1m:300,30s:0
+```
+
+---
+
+## Safety guard
+
+Both scripts refuse to run against `mrkhaldoon.com` (production) unless
+you explicitly pass `-e ALLOW_PROD=true`. Point `BASE_URL` at a staging
+environment when one exists — this app has real students and real data.
+
+## Reports
+
+Every run writes a uniquely timestamped HTML report into `reports/`, plus
+a `-latest.html` convenience copy in this folder (overwritten each run —
+hard-refresh with Ctrl+F5 if viewing it in an already-open browser tab,
+since an IDE's "reload on save" preview doesn't react to files an
+external process like k6 rewrites).
+
+## Thresholds
+
+Starter values in both scripts — tune once you have a real baseline:
+- `http_req_failed` rate < 1%
+- p95 response time < 800ms
+
+## Lesson learned: VUS/DURATION overrides are not automatic
+
+A script's `options.stages` (or `options.vus`/`duration`) is whatever is
+hardcoded in the file unless the script explicitly checks
+`__ENV.VUS`/`__ENV.DURATION` and branches on them. Passing `-e VUS=3` to
+a script that never reads that variable does **nothing** — k6 silently
+ignores it. This actually happened once: a command intended as a small
+3-VU/6-second check instead ran the full 1000-VU ramp against production
+for 3.5 minutes, because the script's stages were hardcoded with no
+override path. Both scripts here now include the override correctly —
+verify it by checking `vus_max` and elapsed time in a verification run's
+own output before trusting the result.
+
+---
+
+# Track 3: Frontend Core Web Vitals (Lighthouse CI)
+
+`npm run perf` (from the repo root) runs Lighthouse CI against the
+dashboard and a course page, mobile-throttled, 3 runs each — Lighthouse
+scores are noisy, so the assertions in `lighthouserc.js` look at all 3
+runs, not a single one.
+
+**Setup**: `login-puppeteer.js` logs in once per audited URL using the
+same login form as the Playwright tests (`#email`/`#password`/submit
+button). LHCI reuses one browser (and its cookies) across every URL it
+audits and re-runs this script before each one — on the 2nd+ URL the
+session is already authenticated, so `/en/login` redirects straight to
+the dashboard and `#email` never renders. The script checks `page.url()`
+after navigating and skips the form fill when that happens, instead of
+timing out waiting for a field that will never appear.
+
+**Reports**: `reports/lighthouse/` (gitignored — LHCI writes 6+ heavy
+HTML/JSON files per run, ~3-4MB total, unlike k6's single overwritten
+file above, so committing every run would bloat the repo fast). Open the
+`.report.html` files directly; share a specific one manually if a finding
+needs to be handed off.
+
+**First real run (2026-09-09), confirmed against production:**
+- Performance score: 0.66–0.75 (target was ≥0.8)
+- Largest Contentful Paint: 6.9–8.5s on mobile-simulated throttling
+  (target was ≤2.5s) — well outside budget on both pages, worth raising
+  at the handover
+- CLS and Total Blocking Time were within budget
+
+Thresholds in `lighthouserc.js` are currently `warn`, not `error`, since
+that first run is the only baseline that exists so far. Once you've run
+this a few more times (ideally against staging, and ideally investigating
+*why* LCP is 3x over budget first — image/video sizing on the dashboard's
+subject cards is a likely suspect), tighten the assertions to `error` with
+realistic targets so `npm run perf` can fail a CI job, not just report.
