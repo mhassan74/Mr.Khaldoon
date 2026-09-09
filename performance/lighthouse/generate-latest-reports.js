@@ -13,7 +13,7 @@ const path = require('path');
  *      manifest.json, so only the latest files remain on disk - no
  *      accumulating history to manage.
  */
-const REPORTS_DIR = path.join(__dirname, 'reports', 'lighthouse');
+const REPORTS_DIR = path.join(__dirname, 'reports');
 const manifestPath = path.join(REPORTS_DIR, 'manifest.json');
 
 if (!fs.existsSync(manifestPath)) {

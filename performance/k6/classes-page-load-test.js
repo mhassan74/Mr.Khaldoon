@@ -123,7 +123,7 @@ export function handleSummary(data) {
   const report = htmlReport(data);
   return {
     stdout: textSummary(data, { indent: ' ', enableColors: true }),
-    [`performance/reports/classes-page-load-report-${stamp}.html`]: report,
-    'performance/classes-page-load-report-latest.html': report,
+    [`performance/k6/reports/classes-page-load-report-${stamp}.html`]: report,
+    'performance/k6/classes-page-load-report-latest.html': report,
   };
 }

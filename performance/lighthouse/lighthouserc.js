@@ -3,17 +3,17 @@ require('dotenv').config();
 const BASE_URL = process.env.BASE_URL || 'https://mrkhaldoon.com';
 
 /**
- * Track 3 of the Mr Khaldoon performance strategy (see README.md) —
+ * Track 3 of the Mr Khaldoon performance strategy (see ../README.md) —
  * frontend Core Web Vitals on the pages students actually feel slowness
- * on: the dashboard (many stat cards + subject images) and a course page
- * (video + images). Tracks 1 (k6 API load) and 2 (chatbot latency) live
- * alongside this file in the same performance/ folder.
+ * on: the dashboard (many stat cards + subject images), a course page
+ * (video + images), and the practice quiz config page. Track 1 (k6 API
+ * load) lives in ../k6/; track 2 (chatbot latency) not built yet.
  *
- * Reports go to reports/lighthouse/ (gitignored, unlike the k6 reports
- * next to it) — LHCI writes 6+ heavy HTML/JSON files per run (~3-4MB
- * total), versus k6's single overwritten HTML file, so committing every
- * run here would bloat the repo fast. Share a specific report manually if
- * a finding needs to be handed off.
+ * Raw output lands in reports/ temporarily, then generate-latest-reports.js
+ * (chained onto `npm run perf`) extracts each URL's representative run to
+ * a fixed <slug>-report-latest.html and deletes the rest — LHCI itself
+ * writes 6+ heavy HTML/JSON files per run and never prunes old ones, so
+ * nothing but the latest files should persist on disk between runs.
  *
  * Thresholds start as 'warn', not 'error' - this app has no established
  * performance baseline yet. Run `npm run perf` once, look at the numbers
@@ -29,7 +29,7 @@ module.exports = {
         `${BASE_URL}/en/practice`,
       ],
       numberOfRuns: 3,
-      puppeteerScript: './performance/login-puppeteer.js',
+      puppeteerScript: './performance/lighthouse/login-puppeteer.js',
       settings: {
         formFactor: 'mobile',
         throttlingMethod: 'simulate',
@@ -46,7 +46,7 @@ module.exports = {
     },
     upload: {
       target: 'filesystem',
-      outputDir: './performance/reports/lighthouse',
+      outputDir: './performance/lighthouse/reports',
     },
   },
 };
