@@ -9,9 +9,10 @@ for why they're split instead of one generic load test plan.
 performance/
   README.md          This file
   k6/                 Track 1: API load testing
-    reports/            Timestamped history per run (tracked in git)
     *.js                 The 3 test scripts
-    *-latest.html         Convenience copy of each script's most recent run
+    reports/             Every run's output lives here: timestamped
+                          history + a *-latest.html convenience copy per
+                          script (both tracked in git)
   lighthouse/         Track 3: frontend Core Web Vitals
     reports/            <slug>-report-latest.html only — no history kept (see below)
     lighthouserc.js       LHCI config: which URLs, thresholds, throttling
@@ -140,7 +141,7 @@ environment when one exists — this app has real students and real data.
 ## Reports
 
 Every run writes a uniquely timestamped HTML report into `k6/reports/`,
-plus a `-latest.html` convenience copy directly in `k6/` (overwritten
+plus a `-latest.html` convenience copy in that same folder (overwritten
 each run — hard-refresh with Ctrl+F5 if viewing it in an already-open
 browser tab, since an IDE's "reload on save" preview doesn't react to
 files an external process like k6 rewrites).

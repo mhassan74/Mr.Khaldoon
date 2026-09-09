@@ -109,6 +109,6 @@ export function handleSummary(data) {
   return {
     stdout: textSummary(data, { indent: ' ', enableColors: true }),
     [`performance/k6/reports/dashboard-load-report-multiuser-${stamp}.html`]: report,
-    'performance/k6/dashboard-load-report-multiuser-latest.html': report,
+    'performance/k6/reports/dashboard-load-report-multiuser-latest.html': report,
   };
 }

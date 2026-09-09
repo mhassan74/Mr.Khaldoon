@@ -124,6 +124,6 @@ export function handleSummary(data) {
   return {
     stdout: textSummary(data, { indent: ' ', enableColors: true }),
     [`performance/k6/reports/classes-page-load-report-${stamp}.html`]: report,
-    'performance/k6/classes-page-load-report-latest.html': report,
+    'performance/k6/reports/classes-page-load-report-latest.html': report,
   };
 }
